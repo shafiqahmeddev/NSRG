@@ -1,0 +1,1 @@
+C:\AndroidStudioProjects\NSRG\liboqs-android\jni\Android.mk

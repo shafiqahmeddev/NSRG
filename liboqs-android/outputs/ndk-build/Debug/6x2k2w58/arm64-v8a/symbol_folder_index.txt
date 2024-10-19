@@ -1,0 +1,1 @@
+C:\AndroidStudioProjects\NSRG\liboqs-android\build\intermediates\cxx\Debug\6x2k2w58\obj\local\arm64-v8a

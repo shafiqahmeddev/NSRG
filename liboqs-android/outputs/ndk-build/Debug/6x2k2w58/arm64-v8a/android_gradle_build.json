@@ -1,0 +1,60 @@
+{
+  "buildFiles": [
+    "C:\\AndroidStudioProjects\\NSRG\\liboqs-android\\jni\\Android.mk"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Sdk\\ndk\\27.0.12077973\\ndk-build.cmd",
+      "NDK_PROJECT_PATH\u003dnull",
+      "APP_BUILD_SCRIPT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\jni\\Android.mk",
+      "APP_ABI\u003darm64-v8a",
+      "NDK_ALL_ABIS\u003darm64-v8a",
+      "NDK_DEBUG\u003d1",
+      "APP_PLATFORM\u003dandroid-21",
+      "NDK_OUT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58/obj",
+      "NDK_LIBS_OUT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58/lib",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Sdk\\ndk\\27.0.12077973\\ndk-build.cmd",
+    "NDK_PROJECT_PATH\u003dnull",
+    "APP_BUILD_SCRIPT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\jni\\Android.mk",
+    "APP_ABI\u003darm64-v8a",
+    "NDK_ALL_ABIS\u003darm64-v8a",
+    "NDK_DEBUG\u003d1",
+    "APP_PLATFORM\u003dandroid-21",
+    "NDK_OUT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58/obj",
+    "NDK_LIBS_OUT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58/lib",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "oqs-jni-debug-arm64-v8a": {
+      "buildCommandComponents": [
+        "C:\\Sdk\\ndk\\27.0.12077973\\ndk-build.cmd",
+        "NDK_PROJECT_PATH\u003dnull",
+        "APP_BUILD_SCRIPT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\jni\\Android.mk",
+        "APP_ABI\u003darm64-v8a",
+        "NDK_ALL_ABIS\u003darm64-v8a",
+        "NDK_DEBUG\u003d1",
+        "APP_PLATFORM\u003dandroid-21",
+        "NDK_OUT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58/obj",
+        "NDK_LIBS_OUT\u003dC:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58/lib",
+        "C:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58/obj/local/arm64-v8a/liboqs-jni.so"
+      ],
+      "toolchain": "toolchain-arm64-v8a",
+      "abi": "arm64-v8a",
+      "artifactName": "oqs-jni",
+      "output": "C:\\AndroidStudioProjects\\NSRG\\liboqs-android\\build\\intermediates\\cxx\\Debug\\6x2k2w58\\obj\\local\\arm64-v8a\\liboqs-jni.so"
+    }
+  },
+  "toolchains": {
+    "toolchain-arm64-v8a": {
+      "cCompilerExecutable": "C:\\Sdk\\ndk\\27.0.12077973\\build\\..\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe"
+    }
+  },
+  "cFileExtensions": [
+    "c"
+  ],
+  "cppFileExtensions": []
+}

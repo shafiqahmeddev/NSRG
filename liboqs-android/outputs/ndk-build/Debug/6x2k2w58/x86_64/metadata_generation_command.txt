@@ -1,0 +1,14 @@
+                        NDK_PROJECT_PATH=null
+APP_BUILD_SCRIPT=C:\AndroidStudioProjects\NSRG\liboqs-android\jni\Android.mk
+APP_ABI=x86_64
+NDK_ALL_ABIS=x86_64
+NDK_DEBUG=1
+APP_PLATFORM=android-21
+NDK_OUT=C:\AndroidStudioProjects\NSRG\liboqs-android\build\intermediates\cxx\Debug\6x2k2w58/obj
+NDK_LIBS_OUT=C:\AndroidStudioProjects\NSRG\liboqs-android\build\intermediates\cxx\Debug\6x2k2w58/lib
+APP_SHORT_COMMANDS=false
+LOCAL_SHORT_COMMANDS=false
+-B
+-n
+                        Build command args: []
+                        Version: 2
