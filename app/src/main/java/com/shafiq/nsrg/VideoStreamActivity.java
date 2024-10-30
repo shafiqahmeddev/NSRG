@@ -5,37 +5,37 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
-import java.io.ByteArrayInputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.nio.ByteBuffer;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-
-// Add the following code to handle the third screen where the video from the drone is displayed
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.util.Arrays;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 public class VideoStreamActivity extends AppCompatActivity {
 
-    private static final int MAX_PACKET_SIZE = 65535;  // Maximum UDP packet size
-    private static final String AES_ALGORITHM = "AES";
+    private static final String TAG = "VideoStreamActivity";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int GCM_TAG_LENGTH = 128;  // 16 bytes = 128 bits
-    private static final int NONCE_LENGTH = 12;  // 12 bytes for GCM nonce
+    private static final String AES_ALGORITHM = "AES";
+    private static final int GCM_TAG_LENGTH = 16 * 8; // In bits (128 bits)
+    private static final int MAX_PACKET_SIZE = 65535;
 
-    private SurfaceView videoSurfaceView;
-    private SurfaceHolder surfaceHolder;
-    private String sharedKeyHex;
+    private static final int FIXED_FRAME_SIZE = 640 * 480 * 3; // Assuming a fixed frame size for consistency
+
+    private ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private SurfaceView surfaceView;
+    private DatagramSocket socket;
+    private byte[] sharedKey;
     private String serverAddress;
     private int port;
 
@@ -44,90 +44,195 @@ public class VideoStreamActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_stream);
 
-        // Initialize the SurfaceView to display the video
-        videoSurfaceView = findViewById(R.id.videoSurfaceView);
-        surfaceHolder = videoSurfaceView.getHolder();
-
-        // Get shared key and server address from intent
+        // Retrieve the shared key and server details from the intent
         Intent intent = getIntent();
-        sharedKeyHex = intent.getStringExtra("sharedKey");
+        String encodedKey = intent.getStringExtra("sharedKey");
         serverAddress = intent.getStringExtra("serverAddress");
-        port = intent.getIntExtra("port", 22222);
+        port = intent.getIntExtra("port", 11111);
 
-        // Start the video streaming thread
-        new Thread(this::startVideoStream).start();
+        if (encodedKey == null || encodedKey.isEmpty()) {
+            Log.e(TAG, "Shared key is null or empty. Cannot proceed with key exchange.");
+            return;
+        }
+
+        try {
+            // Decode the shared key from Base64
+            byte[] rawKey = Base64.decode(encodedKey, Base64.DEFAULT);
+
+            // Ensure the shared key is a valid AES key length (16, 24, or 32 bytes)
+            if (rawKey.length >= 32) {
+                sharedKey = Arrays.copyOf(rawKey, 32); // Use 256-bit key
+            } else if (rawKey.length >= 24) {
+                sharedKey = Arrays.copyOf(rawKey, 24); // Use 192-bit key
+            } else {
+                sharedKey = Arrays.copyOf(rawKey, 16); // Use 128-bit key
+            }
+
+            Log.d(TAG, "Decoded and resized Shared Key: " + bytesToHex(sharedKey));
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to decode shared key: " + e.getMessage(), e);
+            return;
+        }
+
+        surfaceView = findViewById(R.id.surfaceView);
+        SurfaceHolder holder = surfaceView.getHolder();
+
+        holder.addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder surfaceHolder) {
+                // Start the key exchange and video streaming on a separate thread
+                executorService.execute(() -> startKeyExchange());
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {}
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                }
+            }
+        });
     }
 
+    private void startKeyExchange() {
+        try {
+            InetAddress serverAddr = InetAddress.getByName(serverAddress);
+            socket = new DatagramSocket();
+
+            // Send the shared key to the server (drone)
+            DatagramPacket keyPacket = new DatagramPacket(sharedKey, sharedKey.length, serverAddr, port);
+            socket.send(keyPacket);
+            Log.i(TAG, "Shared key sent to server.");
+
+            // Wait for server response (initial nonce)
+            byte[] buffer = new byte[12];  // Buffer size matches nonce size (12 bytes)
+            DatagramPacket responsePacket = new DatagramPacket(buffer, buffer.length);
+            socket.setSoTimeout(20000); // Set timeout for 20 seconds to account for any delays
+
+            boolean nonceReceived = false;
+            int retries = 3;
+
+            for (int i = 0; i < retries && !nonceReceived; i++) {
+                try {
+                    socket.receive(responsePacket);
+                    byte[] responseData = Arrays.copyOf(responsePacket.getData(), responsePacket.getLength());
+                    Log.i(TAG, "Received initial nonce from server: " + bytesToHex(responseData));
+                    nonceReceived = true;
+                    // Proceed to start video stream
+                    startVideoStream();
+                } catch (Exception e) {
+                    Log.e(TAG, "Attempt " + (i + 1) + " - Timeout waiting for server response. No response received.", e);
+                }
+            }
+
+            if (!nonceReceived) {
+                Log.e(TAG, "Failed to receive initial nonce after " + retries + " attempts.");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Socket error occurred during key exchange: " + e.getMessage(), e);
+        }
+    }
+
+    // Placeholder implementation for startVideoStream method
     private void startVideoStream() {
-        try (DatagramSocket socket = new DatagramSocket(port)) {
-            System.out.println("Waiting for packets...");
-
-            // Convert shared key from hex string to bytes
-            byte[] sharedKeyBytes = hexStringToByteArray(sharedKeyHex);
-
-            // Receive the single session nonce (12 bytes)
-            byte[] nonceBuffer = new byte[NONCE_LENGTH];
-            DatagramPacket noncePacket = new DatagramPacket(nonceBuffer, nonceBuffer.length);
-            socket.receive(noncePacket);
-            byte[] nonce = noncePacket.getData();
+        //add 10 second delay
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        try {
+            byte[] receiveBuffer = new byte[MAX_PACKET_SIZE];
 
             while (true) {
-                // Receive the packet
-                byte[] receiveBuffer = new byte[MAX_PACKET_SIZE];
-                DatagramPacket packet = new DatagramPacket(receiveBuffer, receiveBuffer.length);
-                socket.receive(packet);
+                DatagramPacket videoPacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+                socket.receive(videoPacket);
 
-                // Extract frame size
-                ByteBuffer buffer = ByteBuffer.wrap(packet.getData());
-                int frameSize = buffer.getInt();  // Frame size
+                // Extract the packet data
+                byte[] packetData = Arrays.copyOf(videoPacket.getData(), videoPacket.getLength());
 
-                // Read the encrypted frame and tag
-                byte[] encryptedFrameWithTag = new byte[frameSize];
-                buffer.get(encryptedFrameWithTag);
+                if (packetData.length < 16) {
+                    Log.e(TAG, "Received packet is too small to contain valid data.");
+                    continue;
+                }
+                int frameSize = FIXED_FRAME_SIZE;
+                //frameSize = ((packetData[0] & 0xff) << 24) | ((packetData[1] & 0xff) << 16) |
+                        //((packetData[2] & 0xff) << 8) | (packetData[3] & 0xff);
+
+                // Updated condition to accurately validate the frame size
+                if (frameSize <= 0 || frameSize > (packetData.length - 16)) {
+                    Log.e(TAG, "Invalid frame size received: " + frameSize + ". Expected size within valid range.");
+                    continue;
+                }
+
+                byte[] nonce = Arrays.copyOfRange(packetData, 4, 16);
+                byte[] encryptedFrame = Arrays.copyOfRange(packetData, 16, packetData.length);
 
                 try {
-                    // Set up AES-GCM decryption using the single session nonce
+                    // Set up AES-GCM decryption
                     Cipher cipher = Cipher.getInstance(TRANSFORMATION);
                     GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH, nonce);
-                    cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(sharedKeyBytes, AES_ALGORITHM), spec);
+                    cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(sharedKey, AES_ALGORITHM), spec);
 
                     // Decrypt the frame
-                    byte[] decryptedFrame = cipher.doFinal(encryptedFrameWithTag);
+                    byte[] decryptedFrame = cipher.doFinal(encryptedFrame);
 
-                    // Convert the decrypted frame to a Bitmap and display
-                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(decryptedFrame);
-                    Bitmap bitmap = BitmapFactory.decodeStream(byteArrayInputStream);
+                    if (decryptedFrame == null || decryptedFrame.length == 0) {
+                        Log.e(TAG, "Decryption returned empty data.");
+                        continue;
+                    }
 
+                    // Convert the decrypted frame to a Bitmap and display it
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(decryptedFrame, 0, decryptedFrame.length);
                     if (bitmap != null) {
                         runOnUiThread(() -> drawVideoFrame(bitmap));
+                    } else {
+                        Log.e(TAG, "Failed to decode bitmap from decrypted frame.");
                     }
 
                 } catch (Exception e) {
-                    System.out.println("Decryption failed: " + e.getMessage());
+                    Log.e(TAG, "Decryption failed: " + e.getMessage(), e);
                 }
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error receiving or decrypting video stream: " + e.getMessage(), e);
+        } finally {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+            Log.i(TAG, "Socket closed.");
         }
     }
 
     private void drawVideoFrame(Bitmap bitmap) {
-        Canvas canvas = surfaceHolder.lockCanvas();
-        if (canvas != null) {
-            canvas.drawBitmap(bitmap, 0, 0, null);
-            surfaceHolder.unlockCanvasAndPost(canvas);
+        SurfaceHolder holder = surfaceView.getHolder();
+        if (holder.getSurface().isValid()) {
+            Canvas canvas = holder.lockCanvas();
+            if (canvas != null) {
+                canvas.drawBitmap(bitmap, 0, 0, null);
+                holder.unlockCanvasAndPost(canvas);
+            } else {
+                Log.e(TAG, "Failed to lock the canvas for drawing.");
+            }
+        } else {
+            Log.e(TAG, "Surface is not valid for drawing.");
         }
     }
 
-    // Helper method to convert hex string to byte array
-    private byte[] hexStringToByteArray(String hex) {
-        int len = hex.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                    + Character.digit(hex.charAt(i + 1), 16));
+    // Utility function to convert bytes to a hexadecimal string
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder(2 * bytes.length);
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
         }
-        return data;
+        return hexString.toString();
     }
 }

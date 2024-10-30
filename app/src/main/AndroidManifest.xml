@@ -18,20 +18,25 @@
 
         <activity
             android:name=".VideoStreamActivity"
-            android:exported="false" />
+            android:exported="true">
+
+        </activity>
 
         <activity
             android:name=".SplashActivity"
             android:exported="true">
+            <!-- Remove the MAIN and LAUNCHER intent-filter from here -->
+        </activity>
+
+        <!-- MainActivity without the launcher intent-filter -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <!-- Remove the MAIN and LAUNCHER intent-filter from here -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
         </activity>
 
     </application>

@@ -26,17 +26,16 @@ public class KeyEncapsulation {
          */
         void printKeyEncapsulation() {
             System.out.println("KEM Details:" +
-                "\n  Name: " + this.method_name +
-                "\n  Version: " + this.alg_version +
-                "\n  Claimed NIST level: " + this.claimed_nist_level +
-                "\n  Is IND-CCA: " + this.ind_cca +
-                "\n  Length public key (bytes): " + this.length_public_key +
-                "\n  Length secret key (bytes): " + this.length_secret_key +
-                "\n  Length ciphertext (bytes): " + this.length_ciphertext +
-                "\n  Length shared secret (bytes): " + this.length_shared_secret
+                    "\n  Name: " + this.method_name +
+                    "\n  Version: " + this.alg_version +
+                    "\n  Claimed NIST level: " + this.claimed_nist_level +
+                    "\n  Is IND-CCA: " + this.ind_cca +
+                    "\n  Length public key (bytes): " + this.length_public_key +
+                    "\n  Length secret key (bytes): " + this.length_secret_key +
+                    "\n  Length ciphertext (bytes): " + this.length_ciphertext +
+                    "\n  Length shared secret (bytes): " + this.length_shared_secret
             );
         }
-
     }
 
     /**
@@ -65,8 +64,7 @@ public class KeyEncapsulation {
      * \param alg_name Cryptographic algorithm method_name
      * \param secret_key Secret key
      */
-    public KeyEncapsulation(String alg_name, byte[] secret_key)
-                                                    throws RuntimeException {
+    public KeyEncapsulation(String alg_name, byte[] secret_key) throws RuntimeException {
         // KEM not enabled
         if (!KEMs.is_KEM_enabled(alg_name)) {
             // perhaps it's supported
@@ -78,7 +76,8 @@ public class KeyEncapsulation {
         }
         create_KEM_new(alg_name);
         alg_details_ = get_KEM_details();
-        // initialize keys
+
+        // Initialize keys
         if (secret_key != null) {
             this.secret_key_ = Arrays.copyOf(secret_key, secret_key.length);
         } else {
@@ -124,8 +123,7 @@ public class KeyEncapsulation {
      * \param Public key
      * \return Status
      */
-    private native int encap_secret(byte[] ciphertext, byte[] shared_secret,
-                                    byte[] public_key);
+    private native int encap_secret(byte[] ciphertext, byte[] shared_secret, byte[] public_key);
 
     /**
      * \brief Wrapper for OQS_API OQS_STATUS OQS_KEM_decaps(const OQS_KEM *kem,
@@ -137,8 +135,7 @@ public class KeyEncapsulation {
      * \param secret_key
      * \return Status
      */
-    private native int decap_secret(byte[] shared_secret, byte[] ciphertext,
-                                    byte[] secret_key);
+    private native int decap_secret(byte[] shared_secret, byte[] ciphertext, byte[] secret_key);
 
     /**
      * \brief Invoke native free_KEM
@@ -148,15 +145,17 @@ public class KeyEncapsulation {
         free_KEM();
     }
 
-
     /**
      * \brief Invoke native generate_keypair method using the PK and SK lengths
      * from alg_details_. Check return value and if != 0 throw Exception.
      */
-    public byte[] generate_keypair() throws RuntimeException {
+    public Pair<byte[], byte[]> generate_keypair() throws RuntimeException {
         int rv_ = generate_keypair(this.public_key_, this.secret_key_);
-        if (rv_ != 0) throw new RuntimeException("Cannot generate keypair");
-        return this.public_key_;
+        if (rv_ != 0) {
+            throw new RuntimeException("Cannot generate keypair");
+        }
+        // Return both the public key and secret key as a Pair
+        return new Pair<>(this.public_key_, this.secret_key_);
     }
 
     /**
@@ -167,7 +166,7 @@ public class KeyEncapsulation {
     }
 
     /**
-    * \brief Return secret key
+     * \brief Return secret key
      */
     public byte[] export_secret_key() {
         return this.secret_key_;
@@ -178,8 +177,7 @@ public class KeyEncapsulation {
      * \param Public key
      * \return Pair <ciphertext, shared secret>
      */
-    public Pair<byte[], byte[]> encap_secret(byte[] public_key)
-                                                    throws RuntimeException {
+    public Pair<byte[], byte[]> encap_secret(byte[] public_key) throws RuntimeException {
         if (public_key.length != alg_details_.length_public_key) {
             throw new RuntimeException("Incorrect public key length");
         }
@@ -187,11 +185,13 @@ public class KeyEncapsulation {
         byte[] ciphertext = new byte[(int) alg_details_.length_ciphertext];
         byte[] shared_secret = new byte[(int) alg_details_.length_shared_secret];
 
-        int rv_= encap_secret(ciphertext, shared_secret, public_key);
+        int rv_ = encap_secret(ciphertext, shared_secret, public_key);
 
-        Pair<byte[], byte[]> pair = new Pair<>(ciphertext, shared_secret);
-        if (rv_ != 0) throw new RuntimeException("Cannot encapsulate secret");
-        return pair;
+        if (rv_ != 0) {
+            throw new RuntimeException("Cannot encapsulate secret");
+        }
+
+        return new Pair<>(ciphertext, shared_secret);
     }
 
     /**
@@ -205,12 +205,14 @@ public class KeyEncapsulation {
         }
         if (this.secret_key_.length != alg_details_.length_secret_key) {
             throw new RuntimeException("Incorrect secret key length, " +
-                                    "make sure you specify one in the " +
-                                    "constructor or run generate_keypair()");
+                    "make sure you specify one in the " +
+                    "constructor or run generate_keypair()");
         }
         byte[] shared_secret = new byte[(int)alg_details_.length_shared_secret];
         int rv_ = decap_secret(shared_secret, ciphertext, this.secret_key_);
-        if (rv_ != 0) throw new RuntimeException("Cannot decapsulate secret");
+        if (rv_ != 0) {
+            throw new RuntimeException("Cannot decapsulate secret");
+        }
         return shared_secret;
     }
 
@@ -222,8 +224,7 @@ public class KeyEncapsulation {
         if (alg_details_ == null) {
             alg_details_ = get_KEM_details();
         }
-        System.out.println("Key Encapsulation Mechanism: " +
-                            alg_details_.method_name);
+        System.out.println("Key Encapsulation Mechanism: " + alg_details_.method_name);
     }
 
     /**
@@ -236,5 +237,4 @@ public class KeyEncapsulation {
         }
         alg_details_.printKeyEncapsulation();
     }
-
 }
